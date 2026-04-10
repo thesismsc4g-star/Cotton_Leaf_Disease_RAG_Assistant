@@ -5,8 +5,6 @@ import os
 from pathlib import Path
 from typing import List, Tuple
 
-import streamlit as st  # ✅ ADD THIS
-
 from langchain_community.document_loaders import TextLoader, WebBaseLoader
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_community.vectorstores import Chroma
@@ -24,26 +22,10 @@ SOURCES_JSON = DATA_DIR / "sources.json"
 PERSIST_DIR = BASE_DIR / "vectorstore"
 COLLECTION_NAME = "cotton_disease"
 
-# ❌ OLD (REMOVE os.getenv dependency)
-# DEFAULT_EMBEDDING_MODEL = os.getenv(...)
-# DEFAULT_GROQ_MODEL = os.getenv(...)
-
-# ✅ NEW (use secrets with fallback)
-def get_config():
-    try:
-        return {
-            "embedding": st.secrets["embedding"]["EMBEDDING_MODEL"],
-            "groq_model": st.secrets["groq"]["GROQ_MODEL"],
-            "api_key": st.secrets["groq"]["GROQ_API_KEY"],
-        }
-    except Exception:
-        # fallback for local (.env)
-        return {
-            "embedding": os.getenv("EMBEDDING_MODEL", "sentence-transformers/all-MiniLM-L6-v2"),
-            "groq_model": os.getenv("GROQ_MODEL", "llama-3.1-8b-instant"),
-            "api_key": os.getenv("GROQ_API_KEY", ""),
-        }
-
+DEFAULT_EMBEDDING_MODEL = os.getenv(
+    "EMBEDDING_MODEL", "sentence-transformers/all-MiniLM-L6-v2"
+)
+DEFAULT_GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.1-8b-instant")
 
 SYSTEM_PROMPT = (
     "You are an agronomy assistant for cotton leaf diseases. "
@@ -53,13 +35,31 @@ SYSTEM_PROMPT = (
     "say you do not know and ask for more detail."
 )
 
+OUT_OF_SCOPE_MESSAGE = (
+    "I'm a specialized assistant focused on cotton leaf diseases and their management.\n\n"
+    "My purpose is to help farmers, researchers, and students better understand "
+    "issues affecting cotton plant health. I can assist you with identifying "
+    "different types of cotton leaf diseases based on symptoms such as spots, "
+    "discoloration, wilting, or abnormal growth patterns. I can also explain the "
+    "underlying causes, including fungal, bacterial, viral infections, and pest-"
+    "related damage.\n\n"
+    "In addition, I can provide practical guidance on disease prevention, control "
+    "measures, and recommended treatment strategies, including proper use of "
+    "fertilizers, pesticides, and cultivation practices to maintain healthy cotton "
+    "crops.\n\n"
+    "At the moment, I'm not able to assist with queries outside this domain. Please "
+    "feel free to ask any question related to cotton leaf diseases or cotton crop "
+    "management, and I'll be happy to help."
+)
+
 
 def load_urls() -> List[str]:
     if not SOURCES_JSON.exists():
         return []
     with SOURCES_JSON.open("r", encoding="utf-8") as file:
         data = json.load(file)
-    return [url for url in data.get("urls", []) if isinstance(url, str) and url.strip()]
+    urls = data.get("urls", [])
+    return [url for url in urls if isinstance(url, str) and url.strip()]
 
 
 def load_local_documents() -> List[Document]:
@@ -89,29 +89,36 @@ def load_pdf(path: Path) -> List[Document]:
         from langchain_community.document_loaders import PyPDFLoader
     except Exception:
         return []
-    return PyPDFLoader(str(path)).load()
+
+    loader = PyPDFLoader(str(path))
+    return loader.load()
 
 
 def load_web_documents(urls: List[str]) -> List[Document]:
-    return WebBaseLoader(urls).load() if urls else []
+    if not urls:
+        return []
+    loader = WebBaseLoader(urls)
+    return loader.load()
 
 
 def load_documents() -> List[Document]:
-    docs = []
-    docs.extend(load_local_documents())
-    docs.extend(load_extra_documents())
-    docs.extend(load_web_documents(load_urls()))
-    return docs
+    documents = []
+    documents.extend(load_local_documents())
+    documents.extend(load_extra_documents())
+    documents.extend(load_web_documents(load_urls()))
+    return documents
 
 
 def split_documents(documents: List[Document]) -> List[Document]:
-    splitter = RecursiveCharacterTextSplitter(chunk_size=800, chunk_overlap=120)
+    splitter = RecursiveCharacterTextSplitter(
+        chunk_size=800,
+        chunk_overlap=120,
+    )
     return splitter.split_documents(documents)
 
 
 def get_embeddings() -> HuggingFaceEmbeddings:
-    config = get_config()
-    return HuggingFaceEmbeddings(model_name=config["embedding"])
+    return HuggingFaceEmbeddings(model_name=DEFAULT_EMBEDDING_MODEL)
 
 
 def build_vectorstore() -> Chroma:
@@ -121,7 +128,6 @@ def build_vectorstore() -> Chroma:
 
     splits = split_documents(documents)
     embeddings = get_embeddings()
-
     vectorstore = Chroma.from_documents(
         splits,
         embeddings,
@@ -136,7 +142,6 @@ def get_vectorstore() -> Chroma:
     embeddings = get_embeddings()
     if not PERSIST_DIR.exists() or not any(PERSIST_DIR.iterdir()):
         return build_vectorstore()
-
     return Chroma(
         persist_directory=str(PERSIST_DIR),
         embedding_function=embeddings,
@@ -145,15 +150,12 @@ def get_vectorstore() -> Chroma:
 
 
 def get_llm(temperature: float = 0.2) -> ChatGroq:
-    config = get_config()
-    api_key = config["api_key"]
-
+    api_key = os.getenv("GROQ_API_KEY", "")
     if not api_key:
         raise EnvironmentError("GROQ_API_KEY is not set.")
-
     return ChatGroq(
         api_key=api_key,
-        model=config["groq_model"],
+        model=DEFAULT_GROQ_MODEL,
         temperature=temperature,
     )
 
@@ -164,12 +166,9 @@ def answer_question(
     temperature: float = 0.2,
 ) -> Tuple[str, List[str]]:
     vectorstore = get_vectorstore()
-    retriever = vectorstore.as_retriever(search_kwargs={"k": k})
-
-    try:
-        docs = retriever.invoke(question)
-    except Exception:
-        docs = vectorstore.similarity_search(question, k=k)
+    docs, scores = search_with_scores(vectorstore, question, k)
+    if not docs or not is_in_scope(question, scores):
+        return OUT_OF_SCOPE_MESSAGE, []
 
     context = "\n\n".join(doc.page_content for doc in docs)
 
@@ -180,9 +179,78 @@ def answer_question(
         ]
     )
 
-    chain = prompt | get_llm(temperature) | StrOutputParser()
+    chain = prompt | get_llm(temperature=temperature) | StrOutputParser()
     answer = chain.invoke({"question": question, "context": context})
 
-    sources = list({doc.metadata.get("source") for doc in docs if doc.metadata.get("source")})
+    sources: List[str] = []
+    for doc in docs:
+        source = doc.metadata.get("source")
+        if source:
+            sources.append(source)
 
-    return answer, sources
+    return answer, sorted(set(sources))
+
+
+def search_with_scores(
+    vectorstore: Chroma,
+    question: str,
+    k: int,
+) -> Tuple[List[Document], List[float]]:
+    try:
+        scored = vectorstore.similarity_search_with_relevance_scores(question, k=k)
+        docs = [doc for doc, _ in scored]
+        scores = [float(score) for _, score in scored]
+        return docs, scores
+    except Exception:
+        pass
+
+    try:
+        scored = vectorstore.similarity_search_with_score(question, k=k)
+        docs = [doc for doc, _ in scored]
+        scores = [float(score) for _, score in scored]
+        return docs, scores
+    except Exception:
+        return [], []
+
+
+def is_in_scope(question: str, scores: List[float]) -> bool:
+    tokens = question.lower()
+    keyword_hits = any(
+        term in tokens
+        for term in (
+            "cotton",
+            "leaf",
+            "blight",
+            "wilt",
+            "spot",
+            "rust",
+            "mildew",
+            "anthracnose",
+            "fusarium",
+            "verticillium",
+            "alternaria",
+            "bacterial",
+            "fungal",
+            "viral",
+            "pest",
+            "boll",
+            "seedling",
+            "defoliation",
+            "ipm",
+            "pesticide",
+            "fertilizer",
+            "crop",
+            "agronomy",
+        )
+    )
+    if keyword_hits:
+        return True
+
+    if not scores:
+        return False
+
+    top_score = max(scores)
+    if 0.0 <= top_score <= 1.0:
+        return top_score >= 0.2
+
+    return top_score <= 0.9
