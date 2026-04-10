@@ -52,6 +52,8 @@ SYSTEM_PROMPT = (
 
     "Your responsibilities:\n"
     "- Identify cotton leaf diseases from symptoms (spots, discoloration, wilting, abnormal growth).\n"
+     "- Recognize specific disease names such as Alternaria Leaf Spot, Bacterial Blight, Fusarium Wilt, "
+    "Verticillium Wilt, Leaf Curl, and Healthy Leaf.\n"
     "- Explain causes (fungal, bacterial, viral, pest-related).\n"
     "- Provide short, clear, actionable treatment steps.\n"
     "- Suggest prevention methods and proper farming practices.\n\n"
