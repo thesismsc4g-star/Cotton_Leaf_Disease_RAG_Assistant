@@ -46,16 +46,19 @@ project/
 ```
 
 ## ☁️ Deployment (Streamlit Cloud)
+```
 Upload this project to GitHub
 The model is automatically downloaded from Google Drive
 Make sure:
 Model link is public (Anyone with the link)
 requirements.txt is correct
-
+```
 ## 📤 Usage
+```
 Upload a cotton leaf image
 The model predicts the disease
 View:
 ✅ Predicted disease name
 📊 Confidence scores
 🔥 Attention heatmap
+```
