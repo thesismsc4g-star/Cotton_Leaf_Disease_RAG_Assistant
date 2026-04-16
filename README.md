@@ -30,6 +30,7 @@ Users can upload a cotton leaf image and instantly get the predicted disease alo
 ---
 
 ## 📂 Project Structure
+
 ---
 project/
 │
@@ -42,6 +43,7 @@ project/
 └── src/
 ├── modeling.py # Model architecture
 └── data.py # Image preprocessing
+
 ---
 
 ## ☁️ Deployment (Streamlit Cloud)
