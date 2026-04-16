@@ -75,7 +75,27 @@ SYSTEM_PROMPT = (
     "- Keep answers short, clear, and practical.\n"
 )
 
+keywords = [
+    "cotton", "leaf", "disease", "plant", "crop",
+    "pest", "fungus", "yellow", "spot", "blight",
 
+    "alternaria", "alternaria leaf spot",
+    "bacterial blight",
+    "angular leaf spot",
+    "leaf spot",
+    "fusarium", "fusarium wilt",
+    "verticillium", "verticillium wilt",
+    "leaf curl", "leaf curls",
+    "leaf hopper", "jassids",
+    "leaf blight",
+    "herbicide damage", "growth damage",
+    "leaf reddening",
+    "leaf variegation",
+    "healthy leaf",
+    "leaf diseases",
+    "cotton rust",
+    "anthracnose"
+]
 
 # =========================
 # FALLBACK MESSAGE
