@@ -15,6 +15,19 @@ This project is a Retrieval-Augmented Generation (RAG) chatbot for cotton leaf d
 4. Store embeddings in a local Chroma vectorstore.
 5. Retrieve relevant chunks and generate answers using Groq.
 
+## Model and workflow (short)
+### Which model is used for what
+- Embedding: sentence-transformers/all-MiniLM-L6-v2 (env: `EMBEDDING_MODEL`) — converts text into vectors.
+- LLM: llama-3.1-8b-instant (env: `GROQ_MODEL`) — generates the final answer from retrieved context.
+- RAG model: there is no single RAG model here; RAG is the pipeline that combines retrieval (Chroma) + embeddings + LLM.
+
+### Workflow (short)
+1. Load local note + extra files + optional URLs.
+2. Chunk the text.
+3. Embed chunks and save to the Chroma vectorstore.
+4. For a user query, run similarity search and retrieve top-k chunks.
+5. Generate the answer with Groq LLM and show sources.
+
 ## Tech stack
 - UI: Streamlit
 - RAG: LangChain + Chroma
@@ -61,21 +74,8 @@ If you want to be sure Streamlit uses the venv:
 9. Which disease is more likely with poor soil drainage?
 10. Provide a short checklist for healthy leaf management.
 
-## Sample questions (Bangla)
-1. Alternaria leaf spot er cause o prevention ki?
-2. Bacterial blight er prothom symptom gulo ki?
-3. Fusarium wilt er jonne ki rokom crop rotation bhalo?
-4. Verticillium wilt e thanda temperature keno jhamela kore?
-5. Leaf spot er jonne fungicide kobe apply korbo?
-6. Field scouting keno important? koto din por por korbo?
-7. Overhead irrigation ki vabe bacterial blight baray?
-8. Cotton leaf disease prevent korte 5 ta actionable step dao.
-9. Soil drainage kharap hole kon disease beshi hoy?
-10. Healthy leaf management er short checklist dao.
-
-
 ## Notes
-- The chatbot answers in Bangla and uses only retrieved context.
+- The chatbot answers in English and uses only retrieved context.
 - If the answer is not in the context, it will say it does not know.
 
 ## Troubleshooting
