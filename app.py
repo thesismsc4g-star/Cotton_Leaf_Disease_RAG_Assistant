@@ -2,175 +2,105 @@ import streamlit as st
 
 from rag_pipeline import answer_question, build_vectorstore
 
-# =====================================
-# PAGE CONFIG
-# =====================================
-
+# -----------------------------
+# Page Config
+# -----------------------------
 st.set_page_config(
     page_title="Cotton Leaf Disease RAG",
-    page_icon="🌿",
+    page_icon="🌱",
     layout="wide",
 )
 
-# =====================================
-# LOAD CONFIG
-# =====================================
+# -----------------------------
+# Load Secrets (Streamlit Cloud)
+# -----------------------------
+GROQ_API_KEY = None
+GROQ_MODEL = "llama-3.1-8b-instant"
 
 try:
     GROQ_API_KEY = st.secrets["groq"]["GROQ_API_KEY"]
+    GROQ_MODEL = st.secrets["groq"].get("GROQ_MODEL", GROQ_MODEL)
 except Exception:
-    GROQ_API_KEY = None
+    pass
 
-# =====================================
-# HEADER
-# =====================================
+# -----------------------------
+# UI Header
+# -----------------------------
+st.title("🌿 Cotton Leaf Disease RAG Assistant")
+st.write("Ask questions about cotton leaf diseases, causes, and prevention.")
 
-st.title("🌿 Cotton Leaf Disease Assistant")
-
-st.markdown(
-    """
-Ask questions about:
-
-- 🌱 Cotton leaf diseases
-- 🦠 Disease symptoms
-- 🧪 Causes
-- 💊 Treatment
-- 🛡️ Prevention
-
-**You can ask in Bangla or English.**
-"""
-)
-
-# =====================================
-# SIDEBAR
-# =====================================
-
+# -----------------------------
+# Sidebar Settings
+# -----------------------------
 with st.sidebar:
-
     st.header("⚙️ Settings")
 
-    top_k = st.slider(
-        "Top K Retrieved Chunks",
-        min_value=1,
-        max_value=8,
-        value=4,
-    )
+    top_k = st.slider("Top K context chunks", 1, 8, 4)
+    temperature = st.slider("Temperature", 0.0, 1.0, 0.2, 0.05)
 
-    temperature = st.slider(
-        "Temperature",
-        min_value=0.0,
-        max_value=1.0,
-        value=0.2,
-        step=0.05,
-    )
-
-    st.divider()
-
-    if st.button("🔄 Rebuild Knowledge Base"):
-
-        with st.spinner("Building Vector Database..."):
-
+    if st.button("🔄 Rebuild Index"):
+        with st.spinner("Building vector store..."):
             build_vectorstore()
+        st.success("✅ Index rebuilt successfully!")
 
-        st.success("Vector Database Rebuilt Successfully!")
-
-# =====================================
-# API CHECK
-# =====================================
-
+# -----------------------------
+# API Key Check
+# -----------------------------
 if not GROQ_API_KEY:
+    st.warning("⚠️ GROQ_API_KEY not set. Please add it in Streamlit Secrets.")
+    st.stop()  # stop execution if no API key
 
-    st.error("GROQ_API_KEY not found in Streamlit Secrets.")
-
-    st.stop()
-
-# =====================================
-# CHAT HISTORY
-# =====================================
-
+# -----------------------------
+# Chat History
+# -----------------------------
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# Display previous messages
-
+# Display chat history
 for message in st.session_state.messages:
-
     with st.chat_message(message["role"]):
-
         st.markdown(message["content"])
+        if message["role"] == "assistant" and message.get("sources"):
+            st.caption("📚 Sources: " + " | ".join(message["sources"]))
 
-        if (
-            message["role"] == "assistant"
-            and message.get("sources")
-        ):
+# -----------------------------
+# Chat Input
+# -----------------------------
+prompt = st.chat_input("💬 Type your question in Bangla or English...")
 
-            st.caption(
-                "📚 Sources: "
-                + " | ".join(message["sources"])
-            )
-
-# =====================================
-# USER INPUT
-# =====================================
-
-question = st.chat_input(
-    "💬 Ask your question in Bangla or English..."
-)
-
-# =====================================
-# ANSWER
-# =====================================
-
-if question:
-
-    # Show user message
-
-    st.session_state.messages.append(
-        {
-            "role": "user",
-            "content": question,
-        }
-    )
+if prompt:
+    # Save user message
+    st.session_state.messages.append({"role": "user", "content": prompt})
 
     with st.chat_message("user"):
+        st.markdown(prompt)
 
-        st.markdown(question)
+    answer = ""
+    sources = []
 
-    # Generate Answer
-
+    # Generate response
     with st.chat_message("assistant"):
-
         with st.spinner("🤖 Thinking..."):
-
             try:
-
                 answer, sources = answer_question(
-                    question=question,
+                    prompt,
                     k=top_k,
                     temperature=temperature,
                 )
-
             except Exception as e:
+                st.error(f"❌ Error: {str(e)}")
 
-                answer = f"❌ Error:\n\n{str(e)}"
+        if answer:
+            st.markdown(answer)
+            if sources:
+                st.caption("📚 Sources: " + " | ".join(sources))
 
-                sources = []
-
-        st.markdown(answer)
-
-        if sources:
-
-            st.caption(
-                "📚 Sources: "
-                + " | ".join(sources)
-            )
-
-    # Save Assistant Message
-
-    st.session_state.messages.append(
-        {
-            "role": "assistant",
-            "content": answer,
-            "sources": sources,
-        }
-    )
+    # Save assistant message
+    if answer:
+        st.session_state.messages.append(
+            {
+                "role": "assistant",
+                "content": answer,
+                "sources": sources,
+            }
+        )
