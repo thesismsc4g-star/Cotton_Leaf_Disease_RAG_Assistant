@@ -66,7 +66,7 @@ for message in st.session_state.messages:
 # -----------------------------
 # Chat Input
 # -----------------------------
-prompt = st.chat_input("💬 Type your question in Bangla or English...")
+prompt = st.chat_input("💬 Type your question")
 
 if prompt:
     # Save user message
