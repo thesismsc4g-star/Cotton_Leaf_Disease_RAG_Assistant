@@ -217,10 +217,8 @@ ENGLISH_FALLBACK = (
     "I can assist you with identifying different types of cotton leaf diseases based on symptoms such as spots, \n\n"
     "discoloration, wilting, or abnormal growth patterns. I can also explain the underlying causes, including fungal, \n\n"
     "bacterial, viral infections, and pest-related damage.\n\n"
-
-    "In addition, I can provide practical guidance on disease prevention, control measures, and recommended treatment \n\n"
+     "In addition, I can provide practical guidance on disease prevention, control measures, and recommended treatment \n\n"
     "strategies, including proper use of fertilizers, pesticides, and cultivation practices to maintain healthy cotton crops.\n\n"
-
     "At the moment, I’m not able to assist with queries outside this domain. Please feel free to ask any question related \n\n"
     "to cotton leaf diseases or cotton crop management, and I’ll be happy to help.\n\n"
 
