@@ -367,14 +367,13 @@ def answer_question(
 
     q = question.lower()
 
-    # ✅ Domain filter
-    keywords = [
-        "cotton", "leaf", "disease", "plant", "crop",
-        "pest", "fungus", "yellow", "spot", "blight"
-    ]
+   # Domain filter (use the global keywords list)
+if not any(keyword.lower() in q for keyword in keywords):
+    return get_fallback_message(question), []
 
-    if not any(word in q for word in keywords):
-        return FALLBACK_MESSAGE, []
+  # No relevant context found
+if not context.strip():
+    return get_fallback_message(question), []
 
     vectorstore = get_vectorstore()
     retriever = vectorstore.as_retriever(search_kwargs={"k": k})
