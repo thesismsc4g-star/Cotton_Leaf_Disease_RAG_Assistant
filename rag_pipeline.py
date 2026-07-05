@@ -94,10 +94,7 @@ SYSTEM_PROMPT = (
     "- If the user's query contains both Bangla and English, respond naturally in the same mixed language style.\n"
     "- Never change or translate the user's preferred language.\n"
     "- Keep scientific disease names and technical terms (e.g., Alternaria Leaf Spot, Fusarium Wilt, Verticillium Wilt, Anthracnose) in English.\n"
-    "- Keep answers short, clear, practical, and easy to understand.\n"
-    "- Use proper UTF-8 encoded Bangla text.\n"
-    "- Never output escaped Unicode or garbled characters.\n"
-    "- Do not transliterate Bangla."
+    "- Keep answers short, clear, practical, and easy to understand."
 )
 
 # =========================
@@ -203,6 +200,9 @@ keywords = [
     "প্রতিরোধ"
 ]
 
+# =========================
+# FALLBACK MESSAGE
+# =========================
 
 # =========================
 # FALLBACK MESSAGES
@@ -214,12 +214,8 @@ BANGLA_FALLBACK = (
 )
 
 ENGLISH_FALLBACK = (
-    "I'm a specialized assistant focused on cotton leaf diseases and their management. "
-    "My purpose is to help farmers, researchers, and students better understand issues affecting cotton plant health. "
-    "I can assist you in identifying different types of cotton leaf diseases based on symptoms such as spots, discoloration, wilting, or abnormal growth patterns. "
-    "I can also explain their underlying causes, including fungal, bacterial, viral, and pest-related infections. "
-    "In addition, I provide practical guidance on disease prevention, control measures, and recommended treatment strategies, including proper use of fertilizers, pesticides, and good cultivation practices to maintain healthy cotton crops. "
-    "At the moment, I’m not able to assist with queries outside this domain. Please feel free to ask any question related to cotton leaf diseases or cotton crop management, and I’ll be happy to help."
+    "I am a specialized assistant focused on cotton leaf diseases and their management.\n\n"
+    "Please ask a question related to cotton leaf diseases, symptoms, treatment, prevention, pests, or cotton crop management."
 )
 
 
@@ -253,52 +249,28 @@ def get_fallback_message(user_query: str) -> str:
 def load_urls() -> List[str]:
     if not SOURCES_JSON.exists():
         return []
-
     with SOURCES_JSON.open("r", encoding="utf-8") as file:
         data = json.load(file)
-
-    return [
-        url
-        for url in data.get("urls", [])
-        if isinstance(url, str) and url.strip()
-    ]
+    return [url for url in data.get("urls", []) if isinstance(url, str) and url.strip()]
 
 
 def load_local_documents() -> List[Document]:
     docs: List[Document] = []
-
     if LOCAL_NOTE.exists():
-        docs.extend(
-            TextLoader(
-                str(LOCAL_NOTE),
-                encoding="utf-8",
-            ).load()
-        )
-
+        docs.extend(TextLoader(str(LOCAL_NOTE), encoding="utf-8").load())
     return docs
 
 
 def load_extra_documents() -> List[Document]:
     docs: List[Document] = []
-
     if not EXTRA_DIR.exists():
         return docs
 
     for path in EXTRA_DIR.glob("*.txt"):
-        docs.extend(
-            TextLoader(
-                str(path),
-                encoding="utf-8",
-            ).load()
-        )
+        docs.extend(TextLoader(str(path), encoding="utf-8").load())
 
     for path in EXTRA_DIR.glob("*.md"):
-        docs.extend(
-            TextLoader(
-                str(path),
-                encoding="utf-8",
-            ).load()
-        )
+        docs.extend(TextLoader(str(path), encoding="utf-8").load())
 
     for path in EXTRA_DIR.glob("*.pdf"):
         docs.extend(load_pdf(path))
@@ -309,91 +281,61 @@ def load_extra_documents() -> List[Document]:
 def load_pdf(path: Path) -> List[Document]:
     try:
         from langchain_community.document_loaders import PyPDFLoader
-
         return PyPDFLoader(str(path)).load()
-
     except Exception:
         return []
 
 
 def load_web_documents(urls: List[str]) -> List[Document]:
-    if not urls:
-        return []
-
-    return WebBaseLoader(urls).load()
+    return WebBaseLoader(urls).load() if urls else []
 
 
 def load_documents() -> List[Document]:
     docs = []
-
     docs.extend(load_local_documents())
     docs.extend(load_extra_documents())
     docs.extend(load_web_documents(load_urls()))
-
     return docs
 
-
 # =========================
-# TEXT SPLITTER
+# TEXT SPLIT
 # =========================
 def split_documents(documents: List[Document]) -> List[Document]:
-
-    splitter = RecursiveCharacterTextSplitter(
-        chunk_size=800,
-        chunk_overlap=120,
-    )
-
+    splitter = RecursiveCharacterTextSplitter(chunk_size=800, chunk_overlap=120)
     return splitter.split_documents(documents)
-
 
 # =========================
 # EMBEDDINGS
 # =========================
 def get_embeddings() -> HuggingFaceEmbeddings:
-
     config = get_config()
-
-    return HuggingFaceEmbeddings(
-        model_name=config["embedding"]
-    )
-
+    return HuggingFaceEmbeddings(model_name=config["embedding"])
 
 # =========================
-# VECTOR STORE
+# VECTORSTORE
 # =========================
 def build_vectorstore() -> Chroma:
-
     documents = load_documents()
-
     if not documents:
-        raise ValueError(
-            "No documents found. Add data sources first."
-        )
+        raise ValueError("No documents found. Add data sources and try again.")
 
     splits = split_documents(documents)
-
     embeddings = get_embeddings()
 
     vectorstore = Chroma.from_documents(
-        documents=splits,
-        embedding=embeddings,
+        splits,
+        embeddings,
         persist_directory=str(PERSIST_DIR),
         collection_name=COLLECTION_NAME,
     )
-
     vectorstore.persist()
-
     return vectorstore
 
 
 def get_vectorstore() -> Chroma:
-
     embeddings = get_embeddings()
 
-    if (
-        not PERSIST_DIR.exists()
-        or not any(PERSIST_DIR.iterdir())
-    ):
+    if not PERSIST_DIR.exists() or not any(PERSIST_DIR.iterdir()):
         return build_vectorstore()
 
     return Chroma(
@@ -402,20 +344,14 @@ def get_vectorstore() -> Chroma:
         collection_name=COLLECTION_NAME,
     )
 
-
 # =========================
 # LLM
 # =========================
-def get_llm(
-    temperature: float = 0.2,
-) -> ChatGroq:
-
+def get_llm(temperature: float = 0.2) -> ChatGroq:
     config = get_config()
 
     if not config["api_key"]:
-        raise EnvironmentError(
-            "GROQ_API_KEY is not set."
-        )
+        raise EnvironmentError("GROQ_API_KEY is not set.")
 
     return ChatGroq(
         api_key=config["api_key"],
@@ -423,9 +359,8 @@ def get_llm(
         temperature=temperature,
     )
 
-
 # =========================
-# QUESTION ANSWERING
+# MAIN QA FUNCTION
 # =========================
 def answer_question(
     question: str,
@@ -435,79 +370,46 @@ def answer_question(
 
     q = question.lower()
 
-    # -----------------------
-    # Domain Filter
-    # -----------------------
-    if not any(
-        keyword.lower() in q
-        for keyword in keywords
-    ):
-        return get_fallback_message(question), []
+    # ✅ Domain filter
+    keywords = [
+        "cotton", "leaf", "disease", "plant", "crop",
+        "pest", "fungus", "yellow", "spot", "blight"
+    ]
 
-    # -----------------------
-    # Retrieve Context
-    # -----------------------
+    if not any(word in q for word in keywords):
+        return FALLBACK_MESSAGE, []
+
     vectorstore = get_vectorstore()
-
-    retriever = vectorstore.as_retriever(
-        search_kwargs={"k": k}
-    )
+    retriever = vectorstore.as_retriever(search_kwargs={"k": k})
 
     try:
         docs = retriever.invoke(question)
-
     except Exception:
-        docs = vectorstore.similarity_search(
-            question,
-            k=k,
-        )
+        docs = vectorstore.similarity_search(question, k=k)
 
-    context = "\n\n".join(
-        doc.page_content
-        for doc in docs
-    )
+    context = "\n\n".join(doc.page_content for doc in docs)
 
-    # -----------------------
-    # No Context
-    # -----------------------
+    # ❌ No context
     if not context.strip():
-        return get_fallback_message(question), []
+        return FALLBACK_MESSAGE, []
 
-    # -----------------------
-    # Prompt
-    # -----------------------
     prompt = ChatPromptTemplate.from_messages(
         [
             ("system", SYSTEM_PROMPT),
-            (
-                "human",
-                "Question:\n{question}\n\nContext:\n{context}",
-            ),
+            ("human", "Question: {question}\n\nContext:\n{context}"),
         ]
     )
 
-    chain = (
-        prompt
-        | get_llm(temperature)
-        | StrOutputParser()
-    )
+    chain = prompt | get_llm(temperature) | StrOutputParser()
+    answer = chain.invoke({
+        "question": question,
+        "context": context
+    }).strip()
 
-    answer = chain.invoke(
-        {
-            "question": question,
-            "context": context,
-        }
-    ).strip()
-
-    # -----------------------
-    # Sources
-    # -----------------------
-    sources = list(
-        {
-            doc.metadata.get("source")
-            for doc in docs
-            if doc.metadata.get("source")
-        }
-    )
+    sources = list({
+        doc.metadata.get("source")
+        for doc in docs
+        if doc.metadata.get("source")
+    })
 
     return answer, sources
