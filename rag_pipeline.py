@@ -48,200 +48,72 @@ def get_config():
 # SYSTEM PROMPT
 # =========================
 SYSTEM_PROMPT = (
-    "You are a specialized agronomy assistant focused ONLY on cotton leaf diseases and their management.\n\n"
+    "You are a specialized agronomy assistant focused on cotton leaf diseases and their management.\n\n"
 
     "Your responsibilities:\n"
-    "- Identify cotton leaf diseases from symptoms such as spots, discoloration, wilting, curling, reddening, abnormal growth, or other visible leaf symptoms.\n"
-    "- Recognize diseases including:\n"
-    "  Alternaria Leaf Spot,\n"
-    "  Bacterial Blight,\n"
-    "  Angular Leaf Spot,\n"
-    "  Leaf Spot,\n"
-    "  Fusarium,\n"
-    "  Fusarium Wilt,\n"
-    "  Verticillium,\n"
-    "  Verticillium Wilt,\n"
-    "  Leaf Curl,\n"
-    "  Leaf Curls,\n"
-    "  Leaf Hopper,\n"
-    "  Jassids,\n"
-    "  Leaf Blight,\n"
-    "  Herbicide Growth Damage,\n"
-    "  Leaf Reddening,\n"
-    "  Leaf Variegation,\n"
-    "  Healthy Leaf,\n"
-    "  Cotton Rust,\n"
-    "  Anthracnose.\n"
-
-    "- Explain the possible causes (fungal, bacterial, viral, insect/pest-related, nutrient-related, or herbicide damage).\n"
-    "- Suggest short, practical treatment recommendations.\n"
-    "- Recommend disease prevention and good farming practices.\n\n"
+    "- Identify cotton leaf diseases from symptoms (spots, discoloration, wilting, abnormal growth).\n"
+    "- Recognize specific disease names such as:\n"
+    "  Alternaria Leaf Spot, Bacterial Blight, Angular Leaf Spot, Leaf Spot,\n"
+    "  Fusarium, Fusarium Wilt, Verticillium, Verticillium Wilt,\n"
+    "  Leaf Curl, Leaf Curls, Leaf Hopper, Jassids,\n"
+    "  Leaf Blight, Herbicide Growth Damage, Leaf Reddening,\n"
+    "  Leaf Variegation, Healthy Leaf, Cotton Rust, Anthracnose.\n"
+    "- Explain causes (fungal, bacterial, viral, pest-related, or chemical damage).\n"
+    "- Provide short, clear, actionable treatment steps.\n"
+    "- Suggest prevention methods and proper farming practices.\n\n"
 
     "STRICT RULES:\n"
-    "- Use ONLY the provided context to answer.\n"
-    "- Do NOT use outside knowledge.\n"
-    "- Do NOT guess or make up information.\n"
-    "- If the answer is not available in the provided context, reply:\n"
+    "- Use ONLY the provided context.\n"
+    "- If the answer is not in the context, say:\n"
     "  'I do not know based on the available data. Please provide more details.'\n"
-    "- If the user's question is NOT related to cotton, cotton leaf diseases, cotton pests, cotton crop management, or the diseases listed above, reply:\n"
+    "- If the question is NOT related to cotton leaf diseases OR the above listed diseases, say:\n"
     "  'I am a specialized assistant for cotton leaf diseases and cannot answer this question.'\n\n"
 
-    "Language Rules:\n"
-    "- Detect the language of the user's query before answering.\n"
-    "- ALWAYS reply in the SAME language as the user's query.\n"
-    "- If the user's query is in Bangla, respond entirely in Bangla.\n"
-    "- If the user's query is in English, respond entirely in English.\n"
-    "- If the user's query contains both Bangla and English, respond naturally in the same mixed language style.\n"
-    "- Never change or translate the user's preferred language.\n"
-    "- Keep scientific disease names and technical terms (e.g., Alternaria Leaf Spot, Fusarium Wilt, Verticillium Wilt, Anthracnose) in English.\n"
-    "- Keep answers short, clear, practical, and easy to understand."
+    "Language rules:\n"
+    "- User may use Bangla or English.\n"
+    "- ALWAYS respond in English.\n"
+    "- Keep answers short, clear, and practical.\n"
 )
 
-# =========================
-# KEYWORDS
-# =========================
-
 keywords = [
-    # Crop
-    "cotton",
-    "cotton leaf",
-    "cotton plant",
-    "cotton crop",
+    "cotton", "leaf", "disease", "plant", "crop",
+    "pest", "fungus", "yellow", "spot", "blight",
 
-    # General
-    "leaf",
-    "disease",
-    "leaf disease",
-    "crop disease",
-    "plant disease",
-    "plant",
-    "crop",
-
-    # Symptoms
-    "spot",
-    "spots",
-    "leaf spot",
-    "yellow",
-    "yellowing",
-    "brown",
-    "black spot",
-    "reddening",
-    "curl",
-    "curling",
-    "wilt",
-    "wilting",
-    "blight",
-    "discoloration",
-    "chlorosis",
-    "necrosis",
-
-    # Diseases
-    "alternaria",
-    "alternaria leaf spot",
+    "alternaria", "alternaria leaf spot",
     "bacterial blight",
     "angular leaf spot",
-    "fusarium",
-    "fusarium wilt",
-    "verticillium",
-    "verticillium wilt",
-    "leaf curl",
-    "leaf curls",
+    "leaf spot",
+    "fusarium", "fusarium wilt",
+    "verticillium", "verticillium wilt",
+    "leaf curl", "leaf curls",
+    "leaf hopper", "jassids",
     "leaf blight",
-    "cotton rust",
-    "anthracnose",
+    "herbicide damage", "growth damage",
     "leaf reddening",
     "leaf variegation",
     "healthy leaf",
-
-    # Pests
-    "leaf hopper",
-    "leafhopper",
-    "jassid",
-    "jassids",
-    "pest",
-    "insect",
-
-    # Chemical Damage
-    "herbicide damage",
-    "growth damage",
-
-    # Management
-    "treatment",
-    "control",
-    "management",
-    "prevention",
-    "fungicide",
-    "pesticide",
-    "fertilizer",
-
-    # Bangla Keywords
-    "তুলা",
-    "কার্পাস",
-    "তুলা গাছ",
-    "পাতা",
-    "পাতার রোগ",
-    "রোগ",
-    "দাগ",
-    "হলুদ",
-    "কালো দাগ",
-    "লিফ স্পট",
-    "ব্লাইট",
-    "উইল্ট",
-    "পাতা কুঁকড়ানো",
-    "পাতা লাল হওয়া",
-    "ছত্রাক",
-    "ব্যাকটেরিয়া",
-    "ভাইরাস",
-    "পোকা",
-    "জ্যাসিড",
-    "চিকিৎসা",
-    "প্রতিকার",
-    "ব্যবস্থাপনা",
-    "প্রতিরোধ"
+    "leaf diseases",
+    "cotton rust",
+    "anthracnose"
 ]
 
 # =========================
 # FALLBACK MESSAGE
 # =========================
+FALLBACK_MESSAGE = (
+    "I'm a specialized assistant focused on cotton leaf diseases and their management.\n\n"
 
-# =========================
-# FALLBACK MESSAGES
-# =========================
+    "My purpose is to help farmers, researchers, and students better understand issues affecting cotton plant health. "
+    "I can assist you with identifying different types of cotton leaf diseases based on symptoms such as spots, "
+    "discoloration, wilting, or abnormal growth patterns. I can also explain the underlying causes, including fungal, "
+    "bacterial, viral infections, and pest-related damage.\n\n"
 
-BANGLA_FALLBACK = (
-    "আমি শুধুমাত্র তুলা গাছের পাতার রোগ এবং তার ব্যবস্থাপনা সম্পর্কিত প্রশ্নের উত্তর দিতে পারি।\n\n"
-    "অনুগ্রহ করে তুলা পাতার রোগ, লক্ষণ, চিকিৎসা, প্রতিরোধ, পোকামাকড় বা তুলা চাষ ব্যবস্থাপনা সম্পর্কিত প্রশ্ন করুন।"
+    "In addition, I can provide practical guidance on disease prevention, control measures, and recommended treatment "
+    "strategies, including proper use of fertilizers, pesticides, and cultivation practices to maintain healthy cotton crops.\n\n"
+
+    "At the moment, I’m not able to assist with queries outside this domain. Please feel free to ask any question related "
+    "to cotton leaf diseases or cotton crop management, and I’ll be happy to help."
 )
-
-ENGLISH_FALLBACK = (
-    "I am a specialized assistant focused on cotton leaf diseases and their management.\n\n"
-    "Please ask a question related to cotton leaf diseases, symptoms, treatment, prevention, pests, or cotton crop management."
-)
-
-
-# =========================
-# LANGUAGE DETECTION
-# =========================
-
-def is_bangla(text: str) -> bool:
-    """
-    Returns True if the text contains Bangla characters.
-    """
-    return any('\u0980' <= ch <= '\u09FF' for ch in text)
-
-
-# =========================
-# GET FALLBACK MESSAGE
-# =========================
-
-def get_fallback_message(user_query: str) -> str:
-    """
-    Returns the fallback message based on the user's language.
-    """
-    if is_bangla(user_query):
-        return BANGLA_FALLBACK
-    else:
-        return ENGLISH_FALLBACK
 
 # =========================
 # DATA LOADERS
