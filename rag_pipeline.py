@@ -94,7 +94,10 @@ SYSTEM_PROMPT = (
     "- If the user's query contains both Bangla and English, respond naturally in the same mixed language style.\n"
     "- Never change or translate the user's preferred language.\n"
     "- Keep scientific disease names and technical terms (e.g., Alternaria Leaf Spot, Fusarium Wilt, Verticillium Wilt, Anthracnose) in English.\n"
-    "- Keep answers short, clear, practical, and easy to understand."
+    "- Keep answers short, clear, practical, and easy to understand.\n"
+    "- Use proper UTF-8 encoded Bangla text.\n"
+    "- Never output escaped Unicode or garbled characters.\n"
+    "- Do not transliterate Bangla."
 )
 
 # =========================
