@@ -204,12 +204,44 @@ keywords = [
 # FALLBACK MESSAGE
 # =========================
 
-FALLBACK_MESSAGE = (
-    "I am a specialized assistant focused on cotton leaf diseases and their management.\n\n"
+# =========================
+# FALLBACK MESSAGES
+# =========================
+
+BANGLA_FALLBACK = (
     "আমি শুধুমাত্র তুলা গাছের পাতার রোগ এবং তার ব্যবস্থাপনা সম্পর্কিত প্রশ্নের উত্তর দিতে পারি।\n\n"
-    "Please ask a question related to cotton leaf diseases, symptoms, treatment, prevention, pests, or cotton crop management.\n"
     "অনুগ্রহ করে তুলা পাতার রোগ, লক্ষণ, চিকিৎসা, প্রতিরোধ, পোকামাকড় বা তুলা চাষ ব্যবস্থাপনা সম্পর্কিত প্রশ্ন করুন।"
 )
+
+ENGLISH_FALLBACK = (
+    "I am a specialized assistant focused on cotton leaf diseases and their management.\n\n"
+    "Please ask a question related to cotton leaf diseases, symptoms, treatment, prevention, pests, or cotton crop management."
+)
+
+
+# =========================
+# LANGUAGE DETECTION
+# =========================
+
+def is_bangla(text: str) -> bool:
+    """
+    Returns True if the text contains Bangla characters.
+    """
+    return any('\u0980' <= ch <= '\u09FF' for ch in text)
+
+
+# =========================
+# GET FALLBACK MESSAGE
+# =========================
+
+def get_fallback_message(user_query: str) -> str:
+    """
+    Returns the fallback message based on the user's language.
+    """
+    if is_bangla(user_query):
+        return BANGLA_FALLBACK
+    else:
+        return ENGLISH_FALLBACK
 
 # =========================
 # DATA LOADERS
