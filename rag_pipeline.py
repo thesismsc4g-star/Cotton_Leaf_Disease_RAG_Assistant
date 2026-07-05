@@ -246,28 +246,52 @@ def get_fallback_message(user_query: str) -> str:
 def load_urls() -> List[str]:
     if not SOURCES_JSON.exists():
         return []
+
     with SOURCES_JSON.open("r", encoding="utf-8") as file:
         data = json.load(file)
-    return [url for url in data.get("urls", []) if isinstance(url, str) and url.strip()]
+
+    return [
+        url
+        for url in data.get("urls", [])
+        if isinstance(url, str) and url.strip()
+    ]
 
 
 def load_local_documents() -> List[Document]:
     docs: List[Document] = []
+
     if LOCAL_NOTE.exists():
-        docs.extend(TextLoader(str(LOCAL_NOTE), encoding="utf-8").load())
+        docs.extend(
+            TextLoader(
+                str(LOCAL_NOTE),
+                encoding="utf-8",
+            ).load()
+        )
+
     return docs
 
 
 def load_extra_documents() -> List[Document]:
     docs: List[Document] = []
+
     if not EXTRA_DIR.exists():
         return docs
 
     for path in EXTRA_DIR.glob("*.txt"):
-        docs.extend(TextLoader(str(path), encoding="utf-8").load())
+        docs.extend(
+            TextLoader(
+                str(path),
+                encoding="utf-8",
+            ).load()
+        )
 
     for path in EXTRA_DIR.glob("*.md"):
-        docs.extend(TextLoader(str(path), encoding="utf-8").load())
+        docs.extend(
+            TextLoader(
+                str(path),
+                encoding="utf-8",
+            ).load()
+        )
 
     for path in EXTRA_DIR.glob("*.pdf"):
         docs.extend(load_pdf(path))
@@ -278,61 +302,91 @@ def load_extra_documents() -> List[Document]:
 def load_pdf(path: Path) -> List[Document]:
     try:
         from langchain_community.document_loaders import PyPDFLoader
+
         return PyPDFLoader(str(path)).load()
+
     except Exception:
         return []
 
 
 def load_web_documents(urls: List[str]) -> List[Document]:
-    return WebBaseLoader(urls).load() if urls else []
+    if not urls:
+        return []
+
+    return WebBaseLoader(urls).load()
 
 
 def load_documents() -> List[Document]:
     docs = []
+
     docs.extend(load_local_documents())
     docs.extend(load_extra_documents())
     docs.extend(load_web_documents(load_urls()))
+
     return docs
 
+
 # =========================
-# TEXT SPLIT
+# TEXT SPLITTER
 # =========================
 def split_documents(documents: List[Document]) -> List[Document]:
-    splitter = RecursiveCharacterTextSplitter(chunk_size=800, chunk_overlap=120)
+
+    splitter = RecursiveCharacterTextSplitter(
+        chunk_size=800,
+        chunk_overlap=120,
+    )
+
     return splitter.split_documents(documents)
+
 
 # =========================
 # EMBEDDINGS
 # =========================
 def get_embeddings() -> HuggingFaceEmbeddings:
+
     config = get_config()
-    return HuggingFaceEmbeddings(model_name=config["embedding"])
+
+    return HuggingFaceEmbeddings(
+        model_name=config["embedding"]
+    )
+
 
 # =========================
-# VECTORSTORE
+# VECTOR STORE
 # =========================
 def build_vectorstore() -> Chroma:
+
     documents = load_documents()
+
     if not documents:
-        raise ValueError("No documents found. Add data sources and try again.")
+        raise ValueError(
+            "No documents found. Add data sources first."
+        )
 
     splits = split_documents(documents)
+
     embeddings = get_embeddings()
 
     vectorstore = Chroma.from_documents(
-        splits,
-        embeddings,
+        documents=splits,
+        embedding=embeddings,
         persist_directory=str(PERSIST_DIR),
         collection_name=COLLECTION_NAME,
     )
+
     vectorstore.persist()
+
     return vectorstore
 
 
 def get_vectorstore() -> Chroma:
+
     embeddings = get_embeddings()
 
-    if not PERSIST_DIR.exists() or not any(PERSIST_DIR.iterdir()):
+    if (
+        not PERSIST_DIR.exists()
+        or not any(PERSIST_DIR.iterdir())
+    ):
         return build_vectorstore()
 
     return Chroma(
@@ -341,14 +395,20 @@ def get_vectorstore() -> Chroma:
         collection_name=COLLECTION_NAME,
     )
 
+
 # =========================
 # LLM
 # =========================
-def get_llm(temperature: float = 0.2) -> ChatGroq:
+def get_llm(
+    temperature: float = 0.2,
+) -> ChatGroq:
+
     config = get_config()
 
     if not config["api_key"]:
-        raise EnvironmentError("GROQ_API_KEY is not set.")
+        raise EnvironmentError(
+            "GROQ_API_KEY is not set."
+        )
 
     return ChatGroq(
         api_key=config["api_key"],
@@ -356,8 +416,9 @@ def get_llm(temperature: float = 0.2) -> ChatGroq:
         temperature=temperature,
     )
 
+
 # =========================
-# MAIN QA FUNCTION
+# QUESTION ANSWERING
 # =========================
 def answer_question(
     question: str,
@@ -367,45 +428,79 @@ def answer_question(
 
     q = question.lower()
 
-   # Domain filter (use the global keywords list)
-if not any(keyword.lower() in q for keyword in keywords):
-    return get_fallback_message(question), []
+    # -----------------------
+    # Domain Filter
+    # -----------------------
+    if not any(
+        keyword.lower() in q
+        for keyword in keywords
+    ):
+        return get_fallback_message(question), []
 
-  # No relevant context found
-if not context.strip():
-    return get_fallback_message(question), []
-
+    # -----------------------
+    # Retrieve Context
+    # -----------------------
     vectorstore = get_vectorstore()
-    retriever = vectorstore.as_retriever(search_kwargs={"k": k})
+
+    retriever = vectorstore.as_retriever(
+        search_kwargs={"k": k}
+    )
 
     try:
         docs = retriever.invoke(question)
+
     except Exception:
-        docs = vectorstore.similarity_search(question, k=k)
+        docs = vectorstore.similarity_search(
+            question,
+            k=k,
+        )
 
-    context = "\n\n".join(doc.page_content for doc in docs)
+    context = "\n\n".join(
+        doc.page_content
+        for doc in docs
+    )
 
-    # ❌ No context
+    # -----------------------
+    # No Context
+    # -----------------------
     if not context.strip():
-        return FALLBACK_MESSAGE, []
+        return get_fallback_message(question), []
 
+    # -----------------------
+    # Prompt
+    # -----------------------
     prompt = ChatPromptTemplate.from_messages(
         [
             ("system", SYSTEM_PROMPT),
-            ("human", "Question: {question}\n\nContext:\n{context}"),
+            (
+                "human",
+                "Question:\n{question}\n\nContext:\n{context}",
+            ),
         ]
     )
 
-    chain = prompt | get_llm(temperature) | StrOutputParser()
-    answer = chain.invoke({
-        "question": question,
-        "context": context
-    }).strip()
+    chain = (
+        prompt
+        | get_llm(temperature)
+        | StrOutputParser()
+    )
 
-    sources = list({
-        doc.metadata.get("source")
-        for doc in docs
-        if doc.metadata.get("source")
-    })
+    answer = chain.invoke(
+        {
+            "question": question,
+            "context": context,
+        }
+    ).strip()
+
+    # -----------------------
+    # Sources
+    # -----------------------
+    sources = list(
+        {
+            doc.metadata.get("source")
+            for doc in docs
+            if doc.metadata.get("source")
+        }
+    )
 
     return answer, sources
